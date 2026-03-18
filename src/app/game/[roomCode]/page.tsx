@@ -22,6 +22,7 @@ export default function GamePage() {
   const [swapOwnIndex, setSwapOwnIndex] = useState<number | null>(null);
   const [swapTargetPlayer, setSwapTargetPlayer] = useState<string | null>(null);
   const [matchResult, setMatchResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [matchMode, setMatchMode] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function GamePage() {
         setSwapStep(null);
         setSwapOwnIndex(null);
         setSwapTargetPlayer(null);
+        setMatchMode(false);
       }
     });
 
@@ -93,10 +95,12 @@ export default function GamePage() {
   };
 
   const handleKeep = (index: number) => {
+    const cardInfo = drawnCard ? getCardDisplay(drawnCard) : '';
     getSocket().emit('keep-card', { handIndex: index }, (res: any) => {
       if (res.success) {
         setDrawnCard(null);
         setSelectedHandIndex(null);
+        showNotification(`Swapped card ${index + 1} with ${cardInfo}`);
       } else {
         showNotification(res.error);
       }
@@ -411,7 +415,7 @@ export default function GamePage() {
           </div>
 
           {/* Discard pile */}
-          <div>
+          <div className="flex flex-col items-center">
             {gameState.discardPileTop ? (
               <CardComponent
                 card={gameState.discardPileTop}
@@ -424,6 +428,15 @@ export default function GamePage() {
               <div className="w-[4.5rem] h-[6.5rem] rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center">
                 <span className="text-white/20 text-xs">Discard</span>
               </div>
+            )}
+            {/* Match discard button — only when not your turn */}
+            {!isMyTurn && gameState.lastDiscardedCard && gameState.turnPhase === 'draw' && !matchMode && (
+              <button
+                onClick={() => setMatchMode(true)}
+                className="mt-2 px-3 py-1 rounded-lg bg-gold/80 hover:bg-gold text-felt-dark text-xs font-bold transition-all active:scale-95"
+              >
+                Match?
+              </button>
             )}
           </div>
         </div>
@@ -638,6 +651,17 @@ export default function GamePage() {
       {/* My hand */}
       <div className="px-4 pb-4 pt-2">
 
+        {/* Match mode prompt */}
+        {matchMode && gameState.lastDiscardedCard && (
+          <div className="text-center mb-3 animate-bounce-in">
+            <p className="text-gold font-bold text-sm mb-1">Match Discard</p>
+            <p className="text-white/60 text-xs mb-2">
+              Which card matches <span className="text-gold font-semibold">{getCardDisplay(gameState.lastDiscardedCard)}</span>?
+            </p>
+            <p className="text-white/40 text-[10px]">Correct = card removed | Wrong = penalty card added</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 w-fit mx-auto">
           {Array.from({ length: myPlayer?.cardCount ?? 4 }).map((_, i) => (
             <CardComponent
@@ -645,18 +669,30 @@ export default function GamePage() {
               faceUp={false}
               label={`${i + 1}`}
               selected={selectedHandIndex === i}
-              glow={isMyTurn && gameState.turnPhase === 'decide'}
-              onClick={isMyTurn ? () => {
-                if (gameState.turnPhase === 'decide' && drawnCard) {
-                  handleKeep(i);
-                } else if (swapStep === null && gameState.specialActionData?.type === 'swap') {
-                  setSwapOwnIndex(i);
-                  setSwapStep('selectPlayer');
-                }
-              } : undefined}
+              glow={(isMyTurn && gameState.turnPhase === 'decide') || matchMode}
+              onClick={
+                matchMode ? () => {
+                  handleMatchDiscard(i);
+                  setMatchMode(false);
+                } :
+                isMyTurn ? () => {
+                  if (gameState.turnPhase === 'decide' && drawnCard) {
+                    handleKeep(i);
+                  } else if (swapStep === null && gameState.specialActionData?.type === 'swap') {
+                    setSwapOwnIndex(i);
+                    setSwapStep('selectPlayer');
+                  }
+                } : undefined
+              }
             />
           ))}
         </div>
+
+        {matchMode && (
+          <div className="text-center mt-2">
+            <button onClick={() => setMatchMode(false)} className="text-white/40 text-sm hover:text-white">Cancel</button>
+          </div>
+        )}
 
         <div className="text-center mt-2">
           <span className="text-white/40 text-xs">{myPlayer?.name} • {myPlayer?.cumulativeScore} pts</span>
