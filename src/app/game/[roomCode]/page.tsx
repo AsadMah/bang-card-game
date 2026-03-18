@@ -601,15 +601,6 @@ export default function GamePage() {
 
       {/* My hand */}
       <div className="px-4 pb-4 pt-2">
-        {/* Match discard option */}
-        {!isMyTurn && gameState.lastDiscardedCard && gameState.turnPhase === 'draw' && (
-          <div className="text-center mb-3">
-            <p className="text-white/50 text-xs mb-1">
-              Match discard? Tap your card if you think it matches{' '}
-              <span className="text-gold font-semibold">{getCardDisplay(gameState.lastDiscardedCard)}</span>
-            </p>
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-3 w-fit mx-auto">
           {Array.from({ length: myPlayer?.cardCount ?? 4 }).map((_, i) => (
@@ -619,16 +610,14 @@ export default function GamePage() {
               label={`${i + 1}`}
               selected={selectedHandIndex === i}
               glow={isMyTurn && gameState.turnPhase === 'decide'}
-              onClick={() => {
-                if (isMyTurn && gameState.turnPhase === 'decide' && drawnCard) {
+              onClick={isMyTurn ? () => {
+                if (gameState.turnPhase === 'decide' && drawnCard) {
                   handleKeep(i);
-                } else if (!isMyTurn && gameState.lastDiscardedCard && gameState.turnPhase === 'draw') {
-                  handleMatchDiscard(i);
                 } else if (swapStep === null && gameState.specialActionData?.type === 'swap') {
                   setSwapOwnIndex(i);
                   setSwapStep('selectPlayer');
                 }
-              }}
+              } : undefined}
             />
           ))}
         </div>
