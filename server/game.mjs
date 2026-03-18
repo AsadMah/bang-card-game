@@ -369,10 +369,6 @@ export function executeSpecialAction(roomCode, playerId, action) {
         return { room: null, error: 'Invalid card index' };
       const discarded = current.hand.splice(ci, 1)[0];
       room.discardPile.push(discarded);
-      if (room.drawPile.length === 0) reshuffleDiscardPile(room);
-      if (room.drawPile.length > 0) {
-        current.hand.splice(ci, 0, room.drawPile.shift());
-      }
       room.specialActionData = null;
       advanceTurn(room);
       return { room };
