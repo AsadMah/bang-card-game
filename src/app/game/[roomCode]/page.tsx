@@ -411,16 +411,14 @@ export default function GamePage() {
           </div>
 
           {/* Discard pile */}
-          <div
-            className={`${isMyTurn && gameState.turnPhase === 'draw' && gameState.discardPileTop ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
-            onClick={() => isMyTurn && gameState.turnPhase === 'draw' && gameState.discardPileTop && handleDraw(true)}
-          >
+          <div>
             {gameState.discardPileTop ? (
               <CardComponent
                 card={gameState.discardPileTop}
                 faceUp={true}
                 label="Discard"
                 glow={isMyTurn && gameState.turnPhase === 'draw'}
+                onClick={isMyTurn && gameState.turnPhase === 'draw' ? () => handleDraw(true) : undefined}
               />
             ) : (
               <div className="w-[4.5rem] h-[6.5rem] rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center">
@@ -530,9 +528,11 @@ export default function GamePage() {
             {gameState.specialActionData.type === 'swap' && (
               <div className="text-center">
                 <p className="text-gold font-bold mb-2">Swap cards (10)</p>
+
+                {/* Step 1: Select your card */}
                 {!swapStep && (
                   <>
-                    <p className="text-white/60 text-sm mb-3">First, select your card to swap</p>
+                    <p className="text-white/60 text-sm mb-3">Step 1: Select YOUR card to swap</p>
                     <div className="flex gap-2 justify-center">
                       {Array.from({ length: myPlayer?.cardCount ?? 4 }).map((_, i) => (
                         <button
@@ -547,22 +547,58 @@ export default function GamePage() {
                     <button onClick={() => handleSpecialAction({ skip: true })} className="mt-3 text-white/40 text-sm hover:text-white">Skip</button>
                   </>
                 )}
+
+                {/* Step 2: Select which player */}
                 {swapStep === 'selectPlayer' && (
-                  <p className="text-white/60 text-sm">Now tap a player above to swap with</p>
-                )}
-                {swapStep === 'selectTarget' && (
                   <>
-                    <p className="text-white/60 text-sm mb-2">Tap one of their cards above to complete swap</p>
-                    {selectedHandIndex !== null && (
-                      <button
-                        onClick={handleSwapAction}
-                        className="mt-2 px-6 py-2 rounded-xl bg-gold text-felt-dark font-bold transition-all active:scale-95"
-                      >
-                        Confirm Swap
-                      </button>
-                    )}
+                    <p className="text-white/60 text-sm mb-3">Step 2: Pick a player to swap with</p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {gameState.players.filter(p => p.id !== myPlayer?.id).map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setSwapTargetPlayer(p.id); setSwapStep('selectTarget'); setSelectedHandIndex(null); }}
+                          className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 hover:border-gold hover:bg-white/20 active:scale-95 transition-all text-white font-medium text-sm"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => { setSwapOwnIndex(null); setSwapStep(null); }} className="mt-3 text-white/40 text-sm hover:text-white">Back</button>
                   </>
                 )}
+
+                {/* Step 3: Select their card */}
+                {swapStep === 'selectTarget' && (() => {
+                  const target = gameState.players.find(p => p.id === swapTargetPlayer);
+                  return (
+                    <>
+                      <p className="text-white/60 text-sm mb-1">Swapping your card <span className="text-gold font-bold">#{(swapOwnIndex ?? 0) + 1}</span> with <span className="text-gold font-bold">{target?.name}</span></p>
+                      <p className="text-white/60 text-sm mb-3">Step 3: Pick their card</p>
+                      <div className="flex gap-2 justify-center">
+                        {Array.from({ length: target?.cardCount ?? 4 }).map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              handleSpecialAction({
+                                cardIndex: swapOwnIndex,
+                                targetPlayerId: swapTargetPlayer,
+                                targetCardIndex: i,
+                              });
+                              setSwapStep(null);
+                              setSwapOwnIndex(null);
+                              setSwapTargetPlayer(null);
+                              setSelectedHandIndex(null);
+                            }}
+                            className="w-14 h-20 rounded-xl bg-gradient-to-br from-card-back to-card-backDark border-2 border-white/20 hover:border-gold active:scale-95 transition-all flex items-center justify-center"
+                          >
+                            <span className="text-white/40 text-sm">{i + 1}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <button onClick={() => { setSwapTargetPlayer(null); setSwapStep('selectPlayer'); }} className="mt-3 text-white/40 text-sm hover:text-white">Back</button>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
