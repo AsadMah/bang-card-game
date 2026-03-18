@@ -400,10 +400,6 @@ export function attemptMatchDiscard(roomCode, playerId, cardIndex) {
   if (playerValue === lastValue) {
     player.hand.splice(cardIndex, 1);
     room.discardPile.push(playerCard);
-    if (room.drawPile.length === 0) reshuffleDiscardPile(room);
-    if (room.drawPile.length > 0) {
-      player.hand.splice(cardIndex, 0, room.drawPile.shift());
-    }
     return { room, success: true };
   } else {
     if (room.drawPile.length === 0) reshuffleDiscardPile(room);
