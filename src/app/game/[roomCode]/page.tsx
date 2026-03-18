@@ -429,8 +429,8 @@ export default function GamePage() {
                 <span className="text-white/20 text-xs">Discard</span>
               </div>
             )}
-            {/* Match discard button — only when not your turn */}
-            {!isMyTurn && gameState.lastDiscardedCard && gameState.turnPhase === 'draw' && !matchMode && (
+            {/* Match discard button — only on your turn during draw phase */}
+            {isMyTurn && gameState.lastDiscardedCard && gameState.turnPhase === 'draw' && !matchMode && (
               <button
                 onClick={() => setMatchMode(true)}
                 className="mt-2 px-3 py-1 rounded-lg bg-gold/80 hover:bg-gold text-felt-dark text-xs font-bold transition-all active:scale-95"
