@@ -113,14 +113,15 @@ export function joinRoom(roomCode, playerName, playerId) {
   const room = rooms.get(roomCode);
   if (!room) return { room: null, error: 'Room not found' };
   if (room.phase !== 'lobby') return { room: null, error: 'Game already in progress' };
-  if (room.players.length >= 6) return { room: null, error: 'Room is full' };
-  if (room.players.some(p => p.name === playerName)) return { room: null, error: 'Name already taken' };
 
   const existing = room.players.find(p => p.id === playerId);
   if (existing) {
     existing.connected = true;
     return { room };
   }
+
+  if (room.players.length >= 6) return { room: null, error: 'Room is full' };
+  if (room.players.some(p => p.name === playerName)) return { room: null, error: 'Name already taken' };
 
   room.players.push({
     id: playerId,
