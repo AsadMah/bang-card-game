@@ -382,29 +382,49 @@ export function executeSpecialAction(roomCode, playerId, action) {
 export function attemptMatchDiscard(roomCode, playerId, cardIndex) {
   const room = rooms.get(roomCode);
   if (!room) return { room: null, success: false, error: 'Room not found' };
+  if (room.phase !== 'playing' && room.phase !== 'bang_called')
+    return { room: null, success: false, error: 'Not in playing phase' };
+  if (room.turnPhase !== 'draw')
+    return { room: null, success: false, error: 'Can only match at start of turn' };
+
+  const current = room.players[room.currentPlayerIndex];
+  if (current.id !== playerId)
+    return { room: null, success: false, error: 'Not your turn' };
+
   if (!room.lastDiscardedCard)
     return { room: null, success: false, error: 'No last discarded card' };
 
-  const player = room.players.find(p => p.id === playerId);
-  if (!player) return { room: null, success: false, error: 'Player not found' };
-  if (cardIndex < 0 || cardIndex >= player.hand.length)
+  if (cardIndex < 0 || cardIndex >= current.hand.length)
     return { room: null, success: false, error: 'Invalid card index' };
 
-  const playerCard = player.hand[cardIndex];
+  const playerCard = current.hand[cardIndex];
   const lastValue = getCardValue(room.lastDiscardedCard);
   const playerValue = getCardValue(playerCard);
 
   if (playerValue === lastValue) {
-    player.hand.splice(cardIndex, 1);
+    current.hand.splice(cardIndex, 1);
     room.discardPile.push(playerCard);
+    // Correct match — stay on same player's turn so they can match again
     return { room, success: true };
   } else {
     if (room.drawPile.length === 0) reshuffleDiscardPile(room);
     if (room.drawPile.length > 0) {
-      player.hand.push(room.drawPile.shift());
+      current.hand.push(room.drawPile.shift());
     }
+    // Wrong match — turn ends with penalty
+    advanceTurn(room);
     return { room, success: false };
   }
+}
+
+export function endMatchTurn(roomCode, playerId) {
+  const room = rooms.get(roomCode);
+  if (!room) return { room: null, error: 'Room not found' };
+  const current = room.players[room.currentPlayerIndex];
+  if (current.id !== playerId) return { room: null, error: 'Not your turn' };
+  if (room.turnPhase !== 'draw') return { room: null, error: 'Not in draw phase' };
+  advanceTurn(room);
+  return { room };
 }
 
 export function callBang(roomCode, playerId) {

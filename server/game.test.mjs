@@ -13,6 +13,7 @@ import {
   discardDrawnCard,
   executeSpecialAction,
   attemptMatchDiscard,
+  endMatchTurn,
   callBang,
   startNextRound,
   getClientState,
@@ -635,9 +636,65 @@ describe('Match Discard', () => {
 
   it('should fail when no last discarded card', () => {
     const room = setupGame(2);
-    const result = attemptMatchDiscard(room.roomCode, 'p2', 0);
+    const result = attemptMatchDiscard(room.roomCode, 'p1', 0);
     assert.ok(result.error);
     assert.match(result.error, /No last discarded card/);
+  });
+
+  it('should reject match when not your turn', () => {
+    const room = setupGame(2);
+    // It's p1's turn, p2 cannot match
+    const result = attemptMatchDiscard(room.roomCode, 'p2', 0);
+    assert.ok(result.error);
+    assert.match(result.error, /Not your turn/);
+  });
+
+  it('should advance turn on wrong match (turn ends)', () => {
+    const room = setupGame(2);
+    drawCard(room.roomCode, 'p1');
+    room.drawnCard = { rank: '5', suit: 'hearts', id: 'discard-5' };
+    discardDrawnCard(room.roomCode, 'p1');
+
+    // Now it's p2's turn
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p2');
+    room.players[1].hand[0] = { rank: 'K', suit: 'clubs', id: 'nomatch-K' };
+    attemptMatchDiscard(room.roomCode, 'p2', 0);
+
+    // Turn should have advanced to p1
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p1');
+  });
+
+  it('should NOT advance turn on correct match (can chain)', () => {
+    const room = setupGame(2);
+    drawCard(room.roomCode, 'p1');
+    room.drawnCard = { rank: '5', suit: 'hearts', id: 'discard-5' };
+    discardDrawnCard(room.roomCode, 'p1');
+
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p2');
+    room.players[1].hand[0] = { rank: '5', suit: 'clubs', id: 'match-5' };
+    attemptMatchDiscard(room.roomCode, 'p2', 0);
+
+    // Turn should still be p2's
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p2');
+  });
+
+  it('should end match turn with endMatchTurn', () => {
+    const room = setupGame(2);
+    drawCard(room.roomCode, 'p1');
+    room.drawnCard = { rank: '5', suit: 'hearts', id: 'discard-5' };
+    discardDrawnCard(room.roomCode, 'p1');
+
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p2');
+    room.players[1].hand[0] = { rank: '5', suit: 'clubs', id: 'match-5' };
+    attemptMatchDiscard(room.roomCode, 'p2', 0);
+
+    // Still p2's turn after correct match
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p2');
+
+    // End match turn
+    const result = endMatchTurn(room.roomCode, 'p2');
+    assert.ok(result.room);
+    assert.equal(room.players[room.currentPlayerIndex].id, 'p1');
   });
 
   it('should match by value not just rank (Red K=11 matches J=11)', () => {

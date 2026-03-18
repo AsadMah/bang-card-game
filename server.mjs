@@ -159,6 +159,17 @@ app.prepare().then(async () => {
       callback({ success: true, matchSuccess: success });
     });
 
+    socket.on('end-match-turn', (_, callback) => {
+      const info = socketPlayerMap.get(socket.id);
+      if (!info) { callback({ success: false, error: 'Not in a room' }); return; }
+
+      const { room, error } = GM.endMatchTurn(info.roomCode, info.playerId);
+      if (error || !room) { callback({ success: false, error: error || 'Failed' }); return; }
+
+      broadcastState(io, room);
+      callback({ success: true });
+    });
+
     socket.on('call-bang', (_, callback) => {
       const info = socketPlayerMap.get(socket.id);
       if (!info) { callback({ success: false, error: 'Not in a room' }); return; }

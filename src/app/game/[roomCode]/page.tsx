@@ -154,12 +154,24 @@ export default function GamePage() {
   const handleMatchDiscard = (cardIndex: number) => {
     getSocket().emit('match-discard', { cardIndex }, (res: any) => {
       if (res.matchSuccess) {
-        setMatchResult({ success: true, message: 'Match! Card discarded.' });
+        setMatchResult({ success: true, message: 'Match! Card removed.' });
+        // Stay in matchMode so player can match again
+        setMatchMode(true);
       } else {
-        setMatchResult({ success: false, message: 'Wrong! Penalty card added.' });
+        setMatchResult({ success: false, message: 'Wrong! Penalty card added. Turn over.' });
+        setMatchMode(false);
+        // Turn auto-advances on server, overlay auto-dismisses
+        setTimeout(() => setMatchResult(null), 2000);
       }
-      setTimeout(() => setMatchResult(null), 2500);
     });
+  };
+
+  const handleEndMatchTurn = () => {
+    getSocket().emit('end-match-turn', {}, (res: any) => {
+      if (!res.success) showNotification(res.error);
+    });
+    setMatchMode(false);
+    setMatchResult(null);
   };
 
   const handleCallBang = () => {
@@ -712,10 +724,26 @@ export default function GamePage() {
 
       {/* Match result overlay */}
       {matchResult && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setMatchResult(null)}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className={`animate-bounce-in text-center p-6 rounded-2xl ${matchResult.success ? 'bg-green-600/90' : 'bg-red-600/90'}`}>
             <p className="text-white font-bold text-xl">{matchResult.success ? '✓' : '✗'}</p>
             <p className="text-white font-semibold mt-2">{matchResult.message}</p>
+            {matchResult.success && (
+              <div className="flex gap-3 mt-4 justify-center">
+                <button
+                  onClick={() => setMatchResult(null)}
+                  className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold transition-all active:scale-95"
+                >
+                  Match Again
+                </button>
+                <button
+                  onClick={handleEndMatchTurn}
+                  className="px-4 py-2 rounded-xl bg-white/30 hover:bg-white/40 text-white font-semibold transition-all active:scale-95"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
